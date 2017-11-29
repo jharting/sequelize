@@ -303,5 +303,23 @@ describe(Support.getTestDialectTeaser('Utils'), () => {
         });
       });
     }
+
+    if (Support.getTestDialect() === 'mysql') {
+      it('accepts condition object and parses it as number', function() {
+        return Airplane.findAll({
+          attributes: [
+            [this.sequelize.fn('COUNT', {
+              engines: 1
+            }), 'count'],
+            [this.sequelize.fn('SUM', {
+              engines: 1
+            }), 'sum']
+          ]
+        }).spread(airplane => {
+          expect(airplane.get('count')).to.equal(3);
+          expect(airplane.get('sum')).to.equal(1);
+        });
+      });
+    }
   });
 });
