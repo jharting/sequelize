@@ -94,6 +94,32 @@ describe(Support.getTestDialectTeaser('Model'), () => {
           expect(parseInt(posts[1].get('comment_count'))).to.be.equal(2);
         });
       });
+
+      it('orders by a deep nested entity field', function () {
+        const Vehicle = this.sequelize.define('vehicle', {});
+        const Engine = this.sequelize.define('engine', {});
+
+        Vehicle.hasOne(Engine);
+
+        const Crankshaft = this.sequelize.define('crankshaft', {
+          name: DataTypes.STRING
+        });
+
+        Engine.hasOne(Crankshaft);
+
+        return this.sequelize.sync({force: true})
+          .then(() => Vehicle.findAll({
+            include: {
+              model: Engine,
+              include: {
+                model: Crankshaft
+              }
+            },
+            group: [
+              [Vehicle.associations.engine, Engine.associations.crankshaft, 'name']
+            ]
+          }));
+      });
     });
   });
 });
