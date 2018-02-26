@@ -400,5 +400,50 @@ describe(Support.getTestDialectTeaser('Include'), () => {
       });
 
     });
+
+    it('should properly work with GROUP BY', function() {
+      const sequelize = this.sequelize;
+      const User = this.sequelize.define('User', {
+        id: { type: DataTypes.INTEGER, allowNull: false, primaryKey: true, autoIncrement: true },
+        name: { type: DataTypes.STRING }
+      });
+
+      const Project = this.sequelize.define('Project', {
+        name: { type: DataTypes.STRING}
+      });
+
+      User.hasMany(Project);
+
+      return this.sequelize.sync({ force: true }).then(() => {
+        return User.bulkCreate([
+          { name: 'Alpha' },
+          { name: 'Bravo' },
+          { name: 'Charlie' },
+        ]);
+      }).then(() => {
+        return Project.bulkCreate([
+          { name: 'foo', UserId: 1},
+          { name: 'bar', UserId: 2},
+        ]);
+      }).then(() => {
+        return User.findAndCountAll({
+          subQuery: false,
+          attributes: [
+            'name',
+            [sequelize.fn('COUNT', sequelize.col('projects.id')), 'project_count']
+          ],
+          include: [{
+            attributes: [],
+            model: Project
+          }],
+          limit: 2,
+          offset: 0,
+          group: [sequelize.col('user.id')]
+        });
+      }).then(result => {
+        expect(result.count).to.equal(3);
+        expect(result.rows.length).to.equal(2);
+      });
+    });
   });
 });
