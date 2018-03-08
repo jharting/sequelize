@@ -2097,5 +2097,57 @@ describe(Support.getTestDialectTeaser('Include'), () => {
         });
       });
     });
+
+    it('supports limit when nested entity with where clause is included', function() {
+      const User = this.sequelize.define('User', {
+        name: {
+          type: DataTypes.STRING,
+          primaryKey: true
+        }
+      }, {timestamps: false});
+
+      const Project = this.sequelize.define('Project', {
+        name: {
+          type: DataTypes.STRING,
+          primaryKey: true
+        }
+      }, {timestamps: false});
+
+      User.belongsToMany(Project, {through: 'user_project'});
+      Project.belongsToMany(User, {through: 'user_project'});
+
+      return this.sequelize.sync({ force: true })
+        .then(() => Promise.join(
+          Project.bulkCreate([
+            { name: 'alpha' },
+            { name: 'bravo' },
+            { name: 'charlie' }
+          ]),
+          User.bulkCreate([
+            { name: 'Alice' },
+            { name: 'Bob' }
+          ])
+        ))
+        .then(([[alpha, bravo, charlie], [alice, bob]]) => Promise.join(
+          alpha.addUser(alice),
+          bravo.addUser(bob),
+          charlie.addUser(alice)
+        ))
+        .then(() => Project.findAll({
+          include: [{
+            model: User,
+            where: {
+              name: 'Alice'
+            }
+          }],
+          order: ['name'],
+          limit: 1,
+          offset: 1
+        }))
+        .then(result => {
+          expect(result.length).to.equal(1);
+          expect(result[0].name).to.equal('charlie');
+        });
+    });
   });
 });
